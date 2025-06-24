@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Now Playing</title>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      font-family: 'Comfortaa', sans-serif;
+      color: black;
+    }
+
+    #nowPlayingWrapper {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      border: 10px solid #6bff93;
+      background: #c9ffd8 url("../finalPattern.gif") repeat;
+      background-size: 1920px 1080px;
+      background-blend-mode: screen;
+      padding: 15px;
+      border-radius: 75px;
+      max-width: 800px;
+      width: fit-content;
+      overflow: hidden;
+    }
+
+    #nowPlayingInner {
+      background: white;
+      border: 10px solid #6bff93;
+      padding: 20px;
+      border-radius: 50px;
+      animation: none;
+    }
+
+    #label {
+      font-size: 1.5em;
+      opacity: 0.8;
+    }
+
+    #title {
+      font-size: 2.5em;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #author {
+      font-size: 1.5em;
+      opacity: 0.8;
+    }
+
+    @keyframes slideInOut {
+      0% { transform: translateX(-120%); opacity: 0; }
+      10% { transform: translateX(0); opacity: 1; }
+      90% { transform: translateX(0); opacity: 1; }
+      100% { transform: translateX(-120%); opacity: 0; }
+    }
+
+    .animate {
+      animation: slideInOut 5s ease-in-out;
+      animation-fill-mode: forwards;
+    }
+
+    #player {
+      display: none; /* Hide if you don’t want it shown */
+    }
+  </style>
+</head>
+<body>
+
+<div id="nowPlayingWrapper">
+  <div id="nowPlayingInner">
+    <div id="label">Now Playing:</div>
+    <div id="title">Loading...</div>
+    <div id="author">by ...</div>
+  </div>
+</div>
+
+<div id="player"></div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const playlistId = params.get("playlist") || "PL0S0tJt8JAfpVM1hfJYU8-gyEvJ706HZH"; // default if missing
+  const titleEl = document.getElementById("title");
+  const authorEl = document.getElementById("author");
+  const wrapper = document.getElementById("nowPlayingWrapper");
+
+  let player;
+  let lastVideoId = null;
+
+  function triggerAnimation(title, author) {
+    titleEl.textContent = title;
+    authorEl.textContent = `by ${author}`;
+
+    wrapper.classList.remove("animate");
+    void wrapper.offsetWidth; // trigger reflow
+    wrapper.classList.add("animate");
+  }
+
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player("player", {
+      height: "0",
+      width: "0",
+      playerVars: {
+        listType: "playlist",
+        list: playlistId,
+        autoplay: 1,
+        loop: 1,
+        modestbranding: 1,
+        rel: 0,
+        controls: 0,
+        showinfo: 0,
+        iv_load_policy: 3,
+      },
+      events: {
+        onReady: () => {
+          player.playVideo();
+        },
+        onStateChange: (event) => {
+          if (event.data === YT.PlayerState.PLAYING) {
+            const newVideoId = player.getVideoData().video_id;
+            if (newVideoId !== lastVideoId) {
+              lastVideoId = newVideoId;
+              const title = player.getVideoData().title;
+              const author = player.getVideoData().author;
+              triggerAnimation(title, author);
+            }
+          }
+        }
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
