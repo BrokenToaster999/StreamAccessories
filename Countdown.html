@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Countdown</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne+Mono&display=swap');
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      color: #2a65fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    #countdown {
+      font-family: "Syne Mono", monospace;
+      font-weight: 400;
+      font-size: 64px;
+      text-align: center;
+      transform: rotate3d(-1, -2, 0, 20deg);
+    }
+
+	/*
+    #audio {
+      display: none;
+    }
+	*/
+  </style>
+</head>
+<body>
+  <div id="countdown">
+    <span id="time">XX:XX</span>
+  </div>
+  <audio id="audio" src="assets/microwaveLoop.mp3" loop autoplay></audio>
+
+  <script>
+    function getQueryParam(name, defaultValue) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(name) || defaultValue;
+    }
+
+        const timeDisplay = document.getElementById("time");
+        const microwaveSound = document.getElementById("audio");
+        const inputTime = getQueryParam("time", "20:00");
+
+        const timeParts = inputTime.split(":").map(Number);
+        const [targetHours, targetMinutes] = timeParts;
+
+        // Get target Date object for today at the given HH:MM
+        let now = new Date();
+        let target = new Date();
+        target.setHours(targetHours, targetMinutes, 0, 0);
+
+        // If target time is earlier than now, set it to tomorrow
+        if (target < now) {
+            target.setDate(target.getDate() + 1);
+        }
+
+        function updateTime() {
+            const current = new Date();
+            let diff = Math.floor((target - current) / 1000); // seconds remaining
+
+            if (diff <= 0) {
+				if (diff == 0) {
+					microwaveSound.src = "microwaveEnd.mp3";
+					microwaveSound.loop = false;
+					microwaveSound.currentTime = 0;
+					microwaveSound.play();
+				}
+                // Blink when timer is done
+                timeDisplay.textContent = "00:00";
+                timeDisplay.style.display = current.getSeconds() % 2 === 0 ? "none" : "block";
+                return;
+            }
+
+            const minutes = Math.floor(diff / 60);
+            const seconds = diff % 60;
+
+            if (minutes > 99) {
+              	timeDisplay.textContent = "XX:XX";
+            } else {
+              	const paddedMinutes = String(minutes).padStart(2, "0");
+              	const paddedSeconds = String(seconds).padStart(2, "0");
+
+              	timeDisplay.textContent = `${paddedMinutes}:${paddedSeconds}`;
+            }
+            timeDisplay.style.display = "block";
+        }
+
+        setInterval(updateTime, 1000);
+        updateTime(); // Initial call to avoid 1s delay
+  </script>
+</body>
+</html>
