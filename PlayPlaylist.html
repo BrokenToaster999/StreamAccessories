@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Now Playing</title>
+  <meta charset="UTF-8">
+  <title>Now Playing - SoundCloud</title>
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa&display=swap" rel="stylesheet">
   <style>
     body {
       margin: 0;
-      background-color: #000;
+      background: black;
       font-family: 'Comfortaa', sans-serif;
       color: black;
     }
@@ -17,13 +17,10 @@
       top: 20px;
       left: 20px;
       border: 10px solid #6bff93;
-      background: #c9ffd8 url("../finalPattern.gif") repeat;
-      background-size: 1920px 1080px;
-      background-blend-mode: screen;
+      background: #c9ffd8;
       padding: 15px;
       border-radius: 75px;
       max-width: 800px;
-      width: fit-content;
       overflow: hidden;
     }
 
@@ -32,7 +29,6 @@
       border: 10px solid #6bff93;
       padding: 20px;
       border-radius: 50px;
-      animation: none;
     }
 
     #label {
@@ -54,9 +50,9 @@
     }
 
     @keyframes slideInOut {
-      0% { transform: translateX(-120%); opacity: 0; }
-      10% { transform: translateX(0); opacity: 1; }
-      90% { transform: translateX(0); opacity: 1; }
+      0%   { transform: translateX(-120%); opacity: 0; }
+      10%  { transform: translateX(0);     opacity: 1; }
+      90%  { transform: translateX(0);     opacity: 1; }
       100% { transform: translateX(-120%); opacity: 0; }
     }
 
@@ -65,8 +61,8 @@
       animation-fill-mode: forwards;
     }
 
-    #player {
-      display: none; /* Hide if you don’t want it shown */
+    iframe {
+      display: none;
     }
   </style>
 </head>
@@ -80,61 +76,81 @@
   </div>
 </div>
 
-<div id="player"></div>
+<!-- SoundCloud player -->
+<iframe
+  id="sc-player"
+  src="https://w.soundcloud.com/player/?url="
+  allow="autoplay">
+</iframe>
 
-<script src="https://www.youtube.com/iframe_api"></script>
+<!-- SoundCloud Widget API -->
+<script src="https://w.soundcloud.com/player/api.js"></script>
+<script src="./lib.js"></script>
 <script>
-  const params = new URLSearchParams(window.location.search);
-  const playlistId = params.get("playlist") || "PL0S0tJt8JAfpVM1hfJYU8-gyEvJ706HZH"; // default if missing
-  const titleEl = document.getElementById("title");
-  const authorEl = document.getElementById("author");
-  const wrapper = document.getElementById("nowPlayingWrapper");
+  const playlistParam = new URLSearchParams(window.location.search).get("playlist");
 
-  let player;
-  let lastVideoId = null;
+  const iframe = document.getElementById('sc-player');
+  const widget = SC.Widget(iframe);
+  const titleEl = document.getElementById('title');
+  const authorEl = document.getElementById('author');
+  const wrapper = document.getElementById('nowPlayingWrapper');
 
-  function triggerAnimation(title, author) {
-    titleEl.textContent = title;
-    authorEl.textContent = `by ${author}`;
+  let playlist = [];
+  let index = 0;
+  let currentSong = {};
 
-    wrapper.classList.remove("animate");
-    void wrapper.offsetWidth; // trigger reflow
-    wrapper.classList.add("animate");
-  }
+  let widgetReady = false;
 
-  function onYouTubeIframeAPIReady() {
-    player = new YT.Player("player", {
-      height: "0",
-      width: "0",
-      playerVars: {
-        listType: "playlist",
-        list: playlistId,
-        autoplay: 1,
-        loop: 1,
-        modestbranding: 1,
-        rel: 0,
-        controls: 0,
-        showinfo: 0,
-        iv_load_policy: 3,
-      },
-      events: {
-        onReady: () => {
-          player.playVideo();
-        },
-        onStateChange: (event) => {
-          if (event.data === YT.PlayerState.PLAYING) {
-            const newVideoId = player.getVideoData().video_id;
-            if (newVideoId !== lastVideoId) {
-              lastVideoId = newVideoId;
-              const title = player.getVideoData().title;
-              const author = player.getVideoData().author;
-              triggerAnimation(title, author);
-            }
-          }
-        }
-      }
+  function playNext() {
+    if (playlist.length === 0) return;
+    if (index >= playlist.length) index = 0;
+
+    currentSong = playlist[index++];
+
+    widget.load(currentSong.url, {
+      auto_play: true,
+      show_teaser: false
     });
   }
+
+  // PREPARE PLAYLIST
+  let param = PlaylistType.NoFilter;
+  if (playlistParam === "1") {
+    param = PlaylistType.Wait;
+  } else if (playlistParam === "2") {
+    param = PlaylistType.Regular;
+  }
+  GetMusicList(param)
+  .then(
+    async data => {
+      if (data.length > 0) {
+        playlist = ShuffleList(data);
+        await until(_ => widgetReady);
+        playNext();
+        console.log(playlist);
+      } else {
+        console.error("No songs in playlist", data);
+      }
+    }
+  )
+
+  // PREPARE SOUNDCLOUD WIDGET
+  widget.bind(SC.Widget.Events.READY, () => {
+    widget.setVolume(80);
+    widgetReady = true;
+  });
+
+  widget.bind(SC.Widget.Events.PLAY, () => {
+    titleEl.textContent = currentSong.Song;
+    authorEl.textContent = `by ${currentSong.Artist}`;
+    wrapper.classList.remove('animate');
+    void wrapper.offsetWidth;
+    wrapper.classList.add('animate');
+  });
+
+  widget.bind(SC.Widget.Events.FINISH, () => {
+    playNext();
+  });
 </script>
 
 </body>
